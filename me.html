@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 통장 — 경제마을 캠프</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  body { max-width: 560px; margin: 0 auto; padding-bottom: 40px; }
+  .top { background: var(--navy); color: #fff; padding: 22px 20px 70px; border-radius: 0 0 28px 28px; }
+  .top .camp { color: var(--gold); font-weight: 800; letter-spacing: 1px; font-size: 13px; }
+  .top h1 { margin: 6px 0 0; font-size: 24px; }
+  .top .meta { color: #cbd5e1; font-size: 14px; margin-top: 2px; }
+  .balCard { margin: -52px 16px 0; background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(26,41,66,.15); }
+  .balCard .lbl { color: var(--muted); font-size: 14px; }
+  .balCard .bal { font-size: 46px; font-weight: 900; color: var(--navy); line-height: 1.1; }
+  .balCard .bal small { font-size: 20px; color: var(--muted); font-weight: 700; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 14px; }
+  .grid4 div { background: var(--cream); border-radius: 12px; padding: 8px 4px; text-align: center; }
+  .grid4 b { display: block; font-size: 18px; color: var(--navy); }
+  .grid4 span { font-size: 11px; color: var(--muted); }
+  .sec { margin: 18px 16px 0; }
+  .sec h2 { font-size: 17px; color: var(--navy); margin: 0 0 8px; }
+  .open { background: #fff7e0; border: 2px solid var(--gold); border-radius: 14px; padding: 12px 14px; font-weight: 700; }
+  .tx { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px solid var(--line); }
+  .tx .ic { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--cream); flex: none; }
+  .tx .d { flex: 1; min-width: 0; } .tx .d b { display: block; font-size: 15px; } .tx .d span { font-size: 12.5px; color: var(--muted); }
+  .tx .amt { font-size: 18px; font-weight: 900; }
+  .lim { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: 14px; }
+  .lim .bar { flex: 1; height: 8px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+  .lim .bar i { display: block; height: 100%; background: var(--green); }
+  .lim .bar i.full { background: var(--red); }
+  .rank { text-align: center; padding: 14px; background: linear-gradient(135deg, #1a2942, #1d4ed8); color: #fff; border-radius: 16px; }
+  .rank b { font-size: 30px; color: var(--gold); }
+  #login { margin: 40px 16px; }
+  .tip { font-size: 13px; color: var(--muted); text-align: center; margin-top: 18px; }
+</style>
+</head>
+<body>
+
+<div id="login" class="card hidden">
+  <h2 style="margin-top:0">🏦 내 통장 보기</h2>
+  <p>카드 뒷면(또는 앞면)의 <b>카드 번호</b>를 입력하세요. 카드 QR을 휴대폰 카메라로 찍으면 자동으로 열립니다.</p>
+  <input id="code" class="input" placeholder="예: 482913-KQPT" style="text-transform:uppercase" autocomplete="off">
+  <button class="btn blue" style="width:100%;margin-top:10px" onclick="go()">조회</button>
+  <p id="lmsg" class="minus"></p>
+</div>
+
+<div id="view" class="hidden">
+  <div class="top">
+    <div class="camp" id="camp">경제마을 캠프</div>
+    <h1 id="nm"></h1>
+    <div class="meta" id="mt"></div>
+  </div>
+  <div class="balCard">
+    <div class="lbl">지금 쓸 수 있는 돈 (잔액)</div>
+    <div class="bal"><span id="bal">0</span> <small>크레딧</small></div>
+    <div class="grid4">
+      <div><b id="dep">0</b><span>예금</span></div>
+      <div><b id="stk">0</b><span>주식 평가액</span></div>
+      <div><b id="loan" class="minus">0</b><span>갚을 대출</span></div>
+      <div><b id="net">0</b><span>순자산</span></div>
+    </div>
+  </div>
+
+  <div class="sec" id="openSec"></div>
+
+  <div class="sec"><div class="rank">순자산 순위 <b id="rank">-</b> 위 <span id="total" class="small"></span>
+    <div class="small" style="opacity:.85;margin-top:4px">순자산 = 잔액 + 예금 + 주식 평가액 − 대출</div></div></div>
+
+  <div class="sec" id="holdSec"></div>
+
+  <div class="sec card">
+    <h2>📋 부스 이용 한도</h2>
+    <div id="limits"></div>
+  </div>
+
+  <div class="sec card">
+    <h2>🧾 거래 내역 <span class="small muted">(최근 60건)</span></h2>
+    <div id="txs"></div>
+  </div>
+  <p class="tip">자동 새로고침 20초 · 내 카드를 다른 사람에게 보여주지 마세요<br>
+  <a href="#" onclick="logout();return false">다른 카드로 보기</a></p>
+</div>
+
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+let CODE = '';
+const ICON = { GRANT: '🎁', START: '🎟', END: '🧩', REFUND: '↩️', CANCEL: '✖️', DEPOSIT: '🏦', WITHDRAW: '🏦', INTEREST: '💰', LOAN: '📄',
+  REPAY: '✅', AUCTION: '🔨', SETTLE: '📈', ADJUST: '🛠', REISSUE: '🔁' };
+const TYPE = { GRANT: '지급', START: '시작 선차감', END: '체험 결과', REFUND: '환불', CANCEL: '취소', DEPOSIT: '예금 입금', WITHDRAW: '예금 → 잔액',
+  INTEREST: '예금 이자', LOAN: '대출', REPAY: '대출 상환', AUCTION: '경매 낙찰', SETTLE: '주식 정산', ADJUST: '운영 조정', REISSUE: '카드 재발급' };
+
+function init() {
+  const p = new URLSearchParams(location.search);
+  CODE = p.get('c') || sessionStorage.getItem('myCode') || '';
+  if (!CODE) { $('login').classList.remove('hidden'); return; }
+  load();
+  setInterval(load, 20000);
+}
+function go() {
+  const v = $('code').value.trim();
+  if (!Camp.sidOf(v)) { $('lmsg').textContent = '번호 형식을 확인하세요 (숫자 6자리-영문 4자리)'; return; }
+  CODE = v; sessionStorage.setItem('myCode', v); $('login').classList.add('hidden'); load(); setInterval(load, 20000);
+}
+function logout() { sessionStorage.removeItem('myCode'); location.href = location.pathname; }
+
+async function load() {
+  const r = await Camp.api('me', { code: CODE });
+  if (!r.ok) {
+    if (r.net) return;   // 일시적 연결 오류는 무시(다음 새로고침에 재시도)
+    $('view').classList.add('hidden'); $('login').classList.remove('hidden'); $('lmsg').textContent = r.msg; return;
+  }
+  sessionStorage.setItem('myCode', CODE);
+  $('view').classList.remove('hidden');
+  $('camp').textContent = r.camp || '경제마을 캠프';
+  $('nm').textContent = r.student.name + ' 님의 통장';
+  $('mt').textContent = [r.student.grade, r.student.cls ? r.student.cls + '반' : '', '카드 ' + r.student.sid].filter(x => x).join(' · ') +
+    (r.student.entered ? '' : ' · 아직 입장 전');
+  const s = r.summary;
+  $('bal').textContent = s.balance; $('dep').textContent = s.deposit; $('stk').textContent = s.stockValue;
+  $('loan').textContent = s.loan; $('net').textContent = s.net;
+  $('rank').textContent = r.student.entered ? r.rank : '-'; $('total').textContent = r.total ? '/ ' + r.total + '명' : '';
+  $('openSec').innerHTML = r.open ? '<div class="open">⏳ [' + Camp.esc(r.open.booth) + '] 체험 진행 중 — 끝나면 그 부스에서 카드를 다시 스캔하세요</div>' : '';
+  $('holdSec').innerHTML = r.holdings.length ? '<div class="card"><h2>📈 보유 주식</h2>' + r.holdings.map(h =>
+    '<div class="tx"><div class="ic">📈</div><div class="d"><b>' + Camp.esc(h.name) + '</b><span>산 금액 ' + h.cost + '</span></div><div class="amt">' + h.value +
+    ' <span class="small ' + (h.value >= h.cost ? 'plus' : 'minus') + '">(' + Camp.fmt(h.value - h.cost) + ')</span></div></div>').join('') + '</div>' : '';
+  $('limits').innerHTML = r.limits.map(l => {
+    const max = l.maxSuccess || l.maxStart, used = l.maxSuccess ? l.success : l.starts;
+    const pct = Math.min(100, Math.round(used / max * 100));
+    return '<div class="lim"><span style="width:118px">' + Camp.esc(l.name) + '</span><span class="bar"><i class="' + (used >= max ? 'full' : '') + '" style="width:' + pct + '%"></i></span>' +
+      '<span style="width:80px;text-align:right">' + (l.maxSuccess ? '획득 ' : '이용 ') + used + '/' + max + '</span></div>';
+  }).join('');
+  $('txs').innerHTML = r.tx.length ? r.tx.map(t =>
+    '<div class="tx"><div class="ic">' + (ICON[t.type] || '•') + '</div><div class="d"><b>' + Camp.esc(t.booth) + '</b><span>' + Camp.hhmm(t.ts) + ' · ' +
+    Camp.esc(TYPE[t.type] || t.type) + (t.note ? ' · ' + Camp.esc(t.note) : '') + '</span></div><div class="amt ' + (t.delta > 0 ? 'plus' : (t.delta < 0 ? 'minus' : 'muted')) + '">' +
+    (t.delta ? Camp.fmt(t.delta) : '0') + '</div></div>').join('') : '<p class="muted">아직 거래가 없습니다</p>';
+}
+init();
+</script>
+</body>
+</html>

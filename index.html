@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경제마을 캠프 시스템</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  body { max-width: 720px; margin: 0 auto; padding: 30px 18px; }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  .go { display: block; text-decoration: none; color: inherit; margin: 12px 0; }
+  .go .card { display: flex; align-items: center; gap: 16px; } .go .ic { font-size: 38px; }
+  .go b { font-size: 20px; color: var(--navy); display: block; }
+  #st { margin-top: 18px; }
+</style>
+</head>
+<body>
+  <h1>🏘 경제마을 캠프</h1>
+  <p class="muted">QR 크레딧 시스템 — 사용할 화면을 고르세요</p>
+  <a class="go" href="me.html"><div class="card"><span class="ic">🧒</span><div><b>내 통장 (학생)</b><span class="muted">카드 번호로 잔액·거래 내역·한도 확인</span></div></div></a>
+  <a class="go" href="booth.html"><div class="card"><span class="ic">📟</span><div><b>부스 단말</b><span class="muted">부스 태블릿용 — 부스 설정 QR로 자동 설정</span></div></div></a>
+  <a class="go" href="admin.html"><div class="card"><span class="ic">🛠</span><div><b>관리자 · 은행 창구</b><span class="muted">대시보드 · 학생 등록 · 카드/부스 QR 인쇄 · 은행 · 증권 · 경매 · 수상</span></div></div></a>
+  <div id="st" class="card small">서버 연결 확인 중…</div>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+  Camp.api('ping', {}).then(r => {
+    document.getElementById('st').innerHTML = r.ok ? '✅ 서버 연결 정상 — ' + Camp.esc(r.camp || '') : '❌ ' + Camp.esc(r.msg);
+  });
+</script>
+</body>
+</html>

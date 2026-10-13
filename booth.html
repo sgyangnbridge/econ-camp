@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>부스 단말 — 경제마을 캠프</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  body { min-height: 100vh; }
+  header { background: var(--navy); color: #fff; padding: 12px 18px; display: flex; align-items: center; gap: 12px; }
+  header .no { background: var(--gold); color: var(--navy); font-weight: 900; border-radius: 10px; padding: 4px 12px; font-size: 22px; }
+  header .nm { font-size: 22px; font-weight: 800; }
+  header .sp { flex: 1; }
+  header .net { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #15803d; }
+  header .net.off { background: var(--red); }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .guide { background: #fff7e0; border: 1px solid #f1d58a; border-radius: 12px; padding: 10px 14px; font-size: 15px; margin-bottom: 12px; }
+  #camWrap { position: relative; background: #000; border-radius: 16px; overflow: hidden; min-height: 240px; }
+  #reader { width: 100%; }
+  #reader video { border-radius: 16px; }
+  #camMsg { color: #fff; padding: 30px 16px; text-align: center; font-size: 15px; }
+  .camBar { display: flex; gap: 8px; margin-top: 8px; }
+  #status { margin-top: 12px; border-radius: 16px; padding: 18px; text-align: center; font-size: 22px; font-weight: 800; background: #fff;
+    border: 3px solid var(--line); min-height: 80px; white-space: pre-line; }
+  #status.ok { background: #dcfce7; border-color: var(--green); color: #14532d; }
+  #status.err { background: #fee2e2; border-color: var(--red); color: #7f1d1d; }
+  #status.wait { background: #eff6ff; border-color: var(--blue); color: #1e3a8a; }
+  #status .big { font-size: 40px; display: block; margin-top: 4px; }
+  /* 진행 패널 */
+  #panel { margin-top: 14px; }
+  .who { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .who .name { font-size: 24px; font-weight: 900; color: var(--navy); }
+  .who .bal { margin-left: auto; font-size: 18px; } .who .bal b { font-size: 26px; color: var(--navy); }
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .opt { border: 0; border-radius: 14px; padding: 18px 12px; font-size: 19px; font-weight: 800; color: #fff; background: var(--blue); line-height: 1.35; }
+  .opt.f { background: #6b7280; } .opt.s { background: var(--green); }
+  .opt small { display: block; font-size: 15px; font-weight: 600; opacity: .9; }
+  .prod { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 18px; }
+  .prod .p { font-weight: 800; color: var(--navy); width: 70px; text-align: right; }
+  .qty { display: flex; align-items: center; gap: 8px; }
+  .qty button { width: 44px; height: 44px; border-radius: 12px; border: 0; font-size: 24px; font-weight: 900; background: var(--navy); color: #fff; }
+  .qty span { width: 28px; text-align: center; font-size: 20px; font-weight: 800; }
+  .total { font-size: 22px; font-weight: 900; text-align: right; padding: 12px; }
+  .mission { background: #f0fdf4; border: 2px dashed var(--green); border-radius: 14px; padding: 16px; font-size: 20px; font-weight: 700; color: #14532d; }
+  .quiz q { display: block; quotes: none; font-size: 21px; font-weight: 800; margin-bottom: 12px; color: var(--navy); }
+  .choice { display: block; width: 100%; text-align: left; margin: 7px 0; padding: 14px 16px; border-radius: 12px; border: 2px solid var(--line);
+    background: #fff; font-size: 18px; font-weight: 700; }
+  .choice.sel { border-color: var(--blue); background: #dbeafe; }
+  .stockRow { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; border: 2px solid var(--line); margin: 8px 0; background: #fff; }
+  .stockRow.sel { border-color: var(--violet); background: #f5f3ff; }
+  .stockRow .pr { margin-left: auto; font-size: 22px; font-weight: 900; color: var(--violet); }
+  .amts { display: flex; gap: 8px; margin: 10px 0; }
+  .amts button { flex: 1; padding: 14px; font-size: 20px; font-weight: 800; border-radius: 12px; border: 2px solid var(--violet); background: #fff; color: var(--violet); }
+  .amts button.sel { background: var(--violet); color: #fff; }
+  .rescan { margin-top: 14px; background: var(--navy); color: #fff; border-radius: 14px; padding: 14px; text-align: center; font-size: 19px; font-weight: 800; }
+  .wheel { font-size: 54px; text-align: center; padding: 18px; }
+  /* 설정 화면 */
+  #setup { max-width: 520px; margin: 40px auto; }
+  .pinbox { display: flex; gap: 8px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<!-- 0. 부스 설정 (부스 설정 QR을 스캔하면 자동) -->
+<div id="setup" class="card hidden">
+  <h2 style="margin-top:0">부스 단말 설정</h2>
+  <p>관리자 화면에서 인쇄한 <b>부스 설정 QR</b>을 이 기기 카메라로 스캔하면 자동 설정됩니다.<br>
+  카메라 앱으로 스캔하거나, 아래에 부스 번호와 고유코드를 입력하세요.</p>
+  <div class="row"><input id="sBooth" class="input" placeholder="부스 번호 (예: 4)" inputmode="numeric" style="width:40%">
+  <input id="sKey" class="input" placeholder="부스 고유코드 (6자리 영문)" style="text-transform:uppercase"></div>
+  <button class="btn blue" style="margin-top:12px;width:100%" onclick="saveSetup()">이 기기를 이 부스로 설정</button>
+  <p id="setupMsg" class="muted"></p>
+</div>
+
+<!-- 1. 부스 단말 -->
+<div id="app" class="hidden">
+  <header>
+    <span class="no" id="hNo"></span><span class="nm" id="hName"></span>
+    <span class="sp"></span>
+    <span class="net" id="net">연결됨</span>
+    <button class="btn sm ghost" style="color:#fff;border-color:#fff" onclick="openMenu()">⚙</button>
+  </header>
+  <main>
+    <div class="guide" id="guide"></div>
+    <div id="camWrap"><div id="reader"></div><div id="camMsg">카메라 준비 중…</div></div>
+    <div class="camBar">
+      <input id="manual" class="input grow" placeholder="스캔이 안 되면 카드 번호 입력 (예: 482913-KQPT)" autocomplete="off" style="text-transform:uppercase">
+      <button class="btn" onclick="manualGo()">확인</button>
+    </div>
+    <div id="status" class="wait">카드 QR을 카메라에 비추세요</div>
+    <div id="panel"></div>
+  </main>
+</div>
+
+<!-- 설정 메뉴 -->
+<div id="menu" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:center;justify-content:center">
+  <div class="card" style="width:min(420px,92vw)">
+    <h3 style="margin-top:0">단말 메뉴</h3>
+    <button class="btn ghost" style="width:100%;margin:5px 0" onclick="flipCam()">카메라 전환(앞/뒤)</button>
+    <button class="btn ghost" style="width:100%;margin:5px 0" onclick="location.reload()">새로고침</button>
+    <button class="btn red" style="width:100%;margin:5px 0" onclick="resetDevice()">부스 설정 해제</button>
+    <button class="btn gray" style="width:100%;margin:5px 0" onclick="closeMenu()">닫기</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+let BOOTH = null, KEY = '', INFO = null, CUR = null, busy = false, cam = null, resetTimer = null;
+
+/* ---------- 부스 설정 ---------- */
+function params() { return new URLSearchParams(location.search); }
+function init() {
+  const p = params();
+  if (p.get('b') !== null && p.get('k')) {
+    localStorage.setItem('boothId', p.get('b'));
+    localStorage.setItem('boothKey', p.get('k').toUpperCase());
+    history.replaceState(null, '', location.pathname);   // 주소창에서 키 숨김
+  }
+  BOOTH = localStorage.getItem('boothId');
+  KEY = localStorage.getItem('boothKey') || '';
+  if (BOOTH === null || !KEY) { $('setup').classList.remove('hidden'); return; }
+  loadBooth();
+}
+function saveSetup() {
+  const b = $('sBooth').value.trim(), k = $('sKey').value.trim().toUpperCase();
+  if (!b || !k) { $('setupMsg').textContent = '부스 번호와 고유코드를 모두 입력하세요'; return; }
+  localStorage.setItem('boothId', b); localStorage.setItem('boothKey', k);
+  location.reload();
+}
+function resetDevice() {
+  if (!confirm('이 기기의 부스 설정을 해제할까요?')) return;
+  localStorage.removeItem('boothId'); localStorage.removeItem('boothKey'); location.reload();
+}
+function openMenu() { $('menu').classList.remove('hidden'); }
+function closeMenu() { $('menu').classList.add('hidden'); }
+async function flipCam() { closeMenu(); if (cam) await cam.flip(); }
+
+async function loadBooth() {
+  const r = await Camp.api('booth.info', { booth: BOOTH, key: KEY });
+  if (!r.ok) {
+    $('setup').classList.remove('hidden');
+    $('setupMsg').innerHTML = '<b style="color:#b91c1c">' + Camp.esc(r.msg) + '</b>';
+    $('sBooth').value = BOOTH; $('sKey').value = KEY;
+    return;
+  }
+  INFO = r;
+  $('app').classList.remove('hidden');
+  $('hNo').textContent = r.booth.id === 99 ? '조회' : (r.booth.id === 0 ? '입장' : r.booth.id + '번');
+  $('hName').textContent = r.booth.name;
+  document.title = r.booth.name + ' — 부스 단말';
+  $('guide').innerHTML = '📌 ' + Camp.esc(r.booth.guide || '');
+  Camp.keepAwake();
+  cam = Camp.scanner('reader', onCode, { onError: (m) => { $('camMsg').textContent = m; } });
+  idle();   // 카메라 권한 대기와 상관없이 단말은 바로 사용 가능(번호 직접 입력)
+  cam.start().then(() => { if (cam.running) $('camMsg').classList.add('hidden'); });
+  setInterval(ping, 30000);
+}
+async function ping() {
+  const r = await Camp.api('ping', {});
+  $('net').textContent = r.ok ? '연결됨' : '연결 끊김';
+  $('net').classList.toggle('off', !r.ok);
+}
+
+/* ---------- 상태 표시 ---------- */
+function status(cls, html) { const s = $('status'); s.className = cls; s.innerHTML = html; }
+function idle() {
+  CUR = null; $('panel').innerHTML = '';
+  status('wait', INFO.booth.mode === 'ENTRY' ? '입장 카드를 스캔하세요' : '카드 QR을 카메라에 비추세요');
+}
+function idleLater(ms) { clearTimeout(resetTimer); resetTimer = setTimeout(() => { if (!CUR) idle(); }, ms || 4000); }
+
+/* ---------- 스캔 처리 ---------- */
+function manualGo() { const v = $('manual').value.trim(); if (v) { $('manual').value = ''; onCode(v); } }
+$('manual') && $('manual').addEventListener('keydown', (e) => { if (e.key === 'Enter') manualGo(); });
+
+async function onCode(text) {
+  if (busy) return;
+  // 부스 설정 QR을 단말에 비추면 → 그 부스로 재설정
+  if (/booth\.html\?b=/.test(text)) {
+    const u = new URL(text);
+    if (confirm('이 단말을 [' + u.searchParams.get('b') + '번 부스]로 바꿀까요?')) {
+      localStorage.setItem('boothId', u.searchParams.get('b'));
+      localStorage.setItem('boothKey', (u.searchParams.get('k') || '').toUpperCase());
+      location.reload();
+    }
+    return;
+  }
+  if (!Camp.sidOf(text)) { Camp.beep(false); status('err', '학생 카드 QR이 아닙니다'); idleLater(); return; }
+  busy = true; clearTimeout(resetTimer);
+  status('wait', '확인 중…');
+  const payload = { booth: BOOTH, key: KEY, code: text };
+  // 선택한 내용이 있는 상태(장바구니·종목·답)에서 같은 학생 카드가 스캔되면 그 선택으로 확정
+  // 상점·증권·퀴즈 단말은 한 번에 한 학생 — 선택 중인 학생이 있으면 다른 카드는 대기
+  if (CUR && CUR.pending && Camp.sidOf(text) !== CUR.sid) {
+    busy = false; Camp.beep(false);
+    toastMsg(CUR.name + ' 학생이 진행 중입니다 — 잠시 기다렸다가 스캔하세요');
+    return;
+  }
+  if (CUR && CUR.pending && Camp.sidOf(text) === CUR.sid) {
+    const pd = CUR.pending, mode = INFO.booth.mode;
+    const empty = (mode === 'SHOP' && !pd.items.some(x => x.qty > 0)) || (mode === 'STOCK' && !pd.action) || (mode === 'QUIZ' && !pd.answer);
+    if (empty) {
+      busy = false; Camp.beep(false);
+      status('err', mode === 'SHOP' ? '상품을 먼저 고른 뒤 카드를 다시 스캔하세요' : (mode === 'STOCK' ? '종목과 금액(또는 매도)을 먼저 고르세요' : '답을 먼저 고른 뒤 카드를 다시 스캔하세요'));
+      return;
+    }
+    payload.pending = Object.assign({ session: CUR.session }, pd);
+  }
+  const r = await Camp.api('booth.scan', payload);
+  busy = false;
+  handle(r);
+}
+
+function handle(r) {
+  // 진행 중(CUR)인데 다른 학생 카드로 새 체험이 시작되면, 앞 학생은 그대로 진행 중으로 남는다 → 안내
+  if (CUR && r.ok && r.student && r.student.sid !== CUR.sid && (r.stage === 'started' || r.stage === 'open')) {
+    toastMsg(CUR.name + ' 학생은 아직 진행 중입니다 — 끝나면 그 학생 카드를 다시 스캔하세요');
+  }
+  if (!r.ok) {
+    Camp.beep(false);
+    status('err', Camp.esc(r.msg));
+    if (!CUR || r.net) idleLater(r.net ? 6000 : 4500);
+    return;
+  }
+  if (r.stage === 'done') {
+    Camp.beep(true);
+    CUR = null; $('panel').innerHTML = '';
+    let extra = '';
+    if (INFO.booth.mode === 'RANDOM') extra = r.delta > 0 ? '🎉 당첨!' : '😢 꽝';
+    if (INFO.booth.mode === 'QUIZ') extra = r.correct ? '⭕ 정답!' : '❌ 오답 (정답 ' + r.answer + '번)';
+    status('ok', (extra ? extra + '\n' : '') + Camp.esc(r.student.name) + ' — ' + Camp.esc(r.result || '완료') +
+      '<span class="big">' + Camp.fmt(r.delta) + '</span>잔액 ' + r.balance + limitText(r.usage));
+    idleLater(r.delta !== 0 ? 5000 : 3500);
+    return;
+  }
+  if (r.stage === 'info') {
+    Camp.beep(true);
+    let html = Camp.esc(r.msg);
+    if (r.summary) html = Camp.esc(r.student.name) + '<span class="big">' + r.summary.balance + '</span>' +
+      '<span class="small">예금 ' + r.summary.deposit + ' · 주식 ' + r.summary.stockValue + ' · 대출 ' + r.summary.loan + ' · 순자산 ' + r.summary.net + '</span>';
+    if (r.stage === 'info' && r.delta) html = Camp.esc(r.msg) + '<span class="big">' + Camp.fmt(r.delta) + '</span>잔액 ' + r.balance;
+    status('ok', html);
+    idleLater(4500);
+    return;
+  }
+  if (r.stage === 'cancelled') { Camp.beep(true); CUR = null; $('panel').innerHTML = ''; status('ok', Camp.esc(r.msg)); idleLater(); return; }
+  // started / open → 진행 패널 표시
+  Camp.beep(true);
+  CUR = { sid: r.student.sid, name: r.student.name, session: r.session, balance: r.balance, data: r, pending: null };
+  if (r.stage === 'started' && INFO.booth.mode === 'ENTRY') return;
+  renderPanel(r);
+}
+
+function toastMsg(m) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+}
+function limitText(u) {
+  if (!u) return '';
+  const a = [];
+  if (u.maxSuccess) a.push('획득 ' + u.success + '/' + u.maxSuccess + '회');
+  if (u.maxStart) a.push('이용 ' + u.starts + '/' + u.maxStart + '회');
+  return a.length ? '\n<span class="small">' + a.join(' · ') + '</span>' : '';
+}
+
+/* ---------- 부스 유형별 진행 패널 ---------- */
+function whoBar(r) {
+  return '<div class="who"><span class="name">' + Camp.esc(r.student.name) + '</span>' +
+    '<span class="tag">' + Camp.esc(r.student.grade || '') + '</span><span class="bal">잔액 <b id="curBal">' + r.balance + '</b></span></div>';
+}
+function cancelBtn() {
+  return '<div style="text-align:right;margin-top:10px"><button class="btn sm gray" onclick="cancelCur()">이 체험 취소</button></div>';
+}
+// 선택형 단말(상점·증권·퀴즈): 90초 동안 아무 조작이 없으면 자동 취소하고 다음 학생 받기
+const IDLE_RELEASE_S = 90;
+function touch() { if (CUR) CUR.lastAct = Date.now(); }
+setInterval(async () => {
+  if (!CUR || !CUR.pending || busy) return;
+  const left = IDLE_RELEASE_S - Math.floor((Date.now() - (CUR.lastAct || Date.now())) / 1000);
+  const el = $('idleLeft'); if (el) el.textContent = left > 0 ? left + '초 후 자동 취소' : '';
+  if (left <= 0) {
+    const name = CUR.name;
+    const r = await Camp.api('booth.cancel', { booth: BOOTH, key: KEY, session: CUR.session });
+    CUR = null; $('panel').innerHTML = '';
+    status(r.ok ? 'wait' : 'err', r.ok ? name + ' — 시간 초과로 취소되었습니다. 다음 손님 스캔하세요' : r.msg);
+    idleLater(5000);
+  }
+}, 1000);
+document.addEventListener('click', touch, true);
+
+function renderPanel(r) {
+  const mode = INFO.booth.mode, P = $('panel');
+  let h = '<div class="card">' + whoBar(r);
+  if (mode === 'PLAY') {
+    status('ok', Camp.esc(r.student.name) + ' 시작!' + (r.fee ? ' (−' + r.fee + ')' : '') + '\n<span class="small">한 판 플레이 후 카드를 다시 스캔하면 종료됩니다</span>');
+    h += '<div class="rescan">🎮 플레이 중 — 끝나면 카드를 다시 스캔</div>';
+  } else if (mode === 'RANDOM') {
+    status('ok', Camp.esc(r.student.name) + ' 참가비 −' + r.fee + '\n<span class="small">카드를 다시 스캔하면 룰렛이 돌아갑니다</span>');
+    h += '<div class="wheel">🎡</div><div class="rescan">카드를 다시 스캔 → 룰렛 결과</div>';
+  } else if (mode === 'SHOP') {
+    status('wait', '상품을 고른 뒤 카드를 다시 스캔하면 결제됩니다');
+    CUR.pending = { items: [] };
+    h += '<div id="prods">' + (r.products || INFO.products || []).map((p, i) =>
+      '<div class="prod"><span class="grow">' + Camp.esc(p.name) + '</span><span class="p">' + p.price + '</span>' +
+      '<div class="qty"><button onclick="qty(' + i + ',-1)">−</button><span id="q' + i + '">0</span><button onclick="qty(' + i + ',1)">+</button></div></div>').join('') + '</div>' +
+      '<div class="total">합계 <span id="tot">0</span></div><div class="rescan" id="payHint">상품 선택 → 카드 다시 스캔하면 결제</div>';
+    CUR.products = r.products || INFO.products || [];
+  } else if (mode === 'STOCK') {
+    status('wait', '종목과 금액을 고른 뒤 카드를 다시 스캔하면 확정됩니다');
+    CUR.pending = { stock: '', action: '', amount: 0 };
+    CUR.holdings = r.holdings || []; CUR.bought = r.bought || [];
+    h += (r.stocks || []).map(s => {
+      const hold = CUR.holdings.find(x => x.code === s.code);
+      return '<div class="stockRow" id="st_' + s.code + '" onclick="pickStock(\'' + s.code + '\')"><div><b style="font-size:19px">' + Camp.esc(s.name) + '</b><br><span class="small muted">' + Camp.esc(s.desc || '') +
+        (hold ? ' · 보유 평가액 ' + hold.value + ' (매수 ' + hold.cost + ')' : '') + '</span></div><span class="pr">' + s.price + '</span></div>';
+    }).join('') +
+      '<div id="stockAct" class="hidden"><div class="amts" id="amts"><button onclick="pickAmt(10)">10 매수</button><button onclick="pickAmt(20)">20 매수</button><button onclick="pickAmt(30)">30 매수</button></div>' +
+      '<button id="sellBtn" class="btn red hidden" style="width:100%" onclick="pickSell()">전부 매도</button></div>' +
+      '<div class="rescan" id="stockHint">종목 선택 → 금액 → 카드 다시 스캔</div>';
+  } else if (mode === 'QUIZ') {
+    const q = r.meta && r.meta.quiz;
+    status('wait', '답을 고른 뒤 카드를 다시 스캔하면 채점됩니다');
+    CUR.pending = { answer: 0 };
+    h += q ? '<div class="quiz"><q>Q. ' + Camp.esc(q.question) + '</q>' + q.choices.map((c, i) =>
+      '<button class="choice" id="ch' + (i + 1) + '" onclick="pickAns(' + (i + 1) + ')">' + (i + 1) + '. ' + Camp.esc(c) + '</button>').join('') + '</div>' : '<p>문제를 불러오지 못했습니다</p>';
+    h += '<div class="rescan">답 선택 → 카드 다시 스캔하면 채점</div>';
+  } else {
+    // SELF / MISSION / STAFF : 결과 버튼
+    if (r.stage === 'started') {
+      const m = r.meta && r.meta.mission;
+      status('ok', Camp.esc(r.student.name) + ' 시작!' + (r.fee ? ' (−' + r.fee + ')' : '') +
+        '\n<span class="small">체험이 끝나면 카드를 다시 스캔하고 결과를 선택하세요</span>');
+      if (m) h += '<div class="mission">🎯 배정 미션<br>' + Camp.esc(m) + '</div>';
+      h += '<div class="rescan">체험 완료 후 → 카드를 다시 스캔하세요</div>';
+      CUR.waitEnd = true;
+    } else {
+      status('wait', '결과를 선택하세요');
+      const m = r.meta && r.meta.mission;
+      if (m) h += '<div class="mission" style="margin-bottom:10px">🎯 ' + Camp.esc(m) + '</div>';
+      if (r.needPin) h += '<div class="pinbox"><input id="pin" class="input" type="password" inputmode="numeric" placeholder="진행요원 PIN (결과 확정용)"></div><br>';
+      h += '<div class="opts">' + (r.options || []).map(o =>
+        '<button class="opt ' + (o.success ? 's' : 'f') + '" onclick="choose(' + o.i + ')">' + Camp.esc(o.label) +
+        '<small>' + (o.delta ? Camp.fmt(o.delta) + ' 크레딧' : '지급 없음') + '</small></button>').join('') + '</div>';
+    }
+  }
+  h += cancelBtn() + (CUR.pending ? '<div class="small muted" style="text-align:right" id="idleLeft"></div>' : '') + '</div>';
+  P.innerHTML = h;
+  touch();
+}
+
+/* 상점 */
+function qty(i, d) {
+  const p = CUR.products[i];
+  let it = CUR.pending.items.find(x => x.name === p.name);
+  if (!it) { it = { name: p.name, qty: 0 }; CUR.pending.items.push(it); }
+  it.qty = Math.max(0, Math.min(9, it.qty + d));
+  $('q' + i).textContent = it.qty;
+  const tot = CUR.pending.items.reduce((a, x) => a + x.qty * (CUR.products.find(p => p.name === x.name) || {}).price, 0);
+  $('tot').textContent = tot;
+  $('tot').style.color = tot > CUR.balance ? '#b91c1c' : '';
+  $('payHint').textContent = tot > CUR.balance ? '잔액보다 많습니다 — 수량을 줄이세요' : (tot ? '합계 ' + tot + ' — 카드를 다시 스캔하면 결제' : '상품 선택 → 카드 다시 스캔하면 결제');
+}
+/* 증권 */
+function pickStock(code) {
+  CUR.pending.stock = code; CUR.pending.action = ''; CUR.pending.amount = 0;
+  document.querySelectorAll('.stockRow').forEach(e => e.classList.remove('sel'));
+  $('st_' + code).classList.add('sel');
+  $('stockAct').classList.remove('hidden');
+  const hold = CUR.holdings.find(x => x.code === code);
+  const bought = CUR.bought.indexOf(code) >= 0;
+  $('amts').classList.toggle('hidden', bought);
+  $('sellBtn').classList.toggle('hidden', !hold);
+  $('sellBtn').textContent = hold ? '전부 매도 (현재 평가액 ' + hold.value + ')' : '';
+  document.querySelectorAll('#amts button').forEach(b => b.classList.remove('sel'));
+  $('stockHint').textContent = bought && !hold ? '이미 매수했던 종목입니다(종목당 1회)' : (bought ? '보유 종목 — 매도를 선택하세요' : '금액 선택 → 카드 다시 스캔');
+}
+function pickAmt(a) {
+  CUR.pending.action = 'buy'; CUR.pending.amount = a;
+  document.querySelectorAll('#amts button').forEach(b => b.classList.toggle('sel', b.textContent.indexOf(String(a)) === 0));
+  $('stockHint').textContent = a + ' 매수 — 카드를 다시 스캔하면 확정';
+}
+function pickSell() { CUR.pending.action = 'sell'; $('stockHint').textContent = '전부 매도 — 카드를 다시 스캔하면 확정'; }
+/* 퀴즈 */
+function pickAns(n) {
+  CUR.pending.answer = n;
+  document.querySelectorAll('.choice').forEach(e => e.classList.remove('sel'));
+  $('ch' + n).classList.add('sel');
+}
+/* 결과 버튼 */
+async function choose(i) {
+  if (busy) return;
+  busy = true;
+  status('wait', '저장 중…');
+  const pin = $('pin') ? $('pin').value : '';
+  const r = await Camp.api('booth.end', { booth: BOOTH, key: KEY, session: CUR.session, option: i, pin: pin });
+  busy = false;
+  if (!r.ok && r.pinError) { Camp.beep(false); status('err', Camp.esc(r.msg)); return; }
+  handle(r);
+}
+async function cancelCur() {
+  if (!CUR || !confirm(CUR.name + ' 학생의 체험을 취소할까요?')) return;
+  const pin = $('pin') ? $('pin').value : '';
+  const r = await Camp.api('booth.cancel', { booth: BOOTH, key: KEY, session: CUR.session, pin: pin });
+  if (!r.ok) { Camp.beep(false); status('err', Camp.esc(r.msg)); return; }
+  handle(r);
+}
+
+init();
+</script>
+</body>
+</html>

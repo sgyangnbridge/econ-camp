@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관리자 — 경제마을 캠프</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  header { background: var(--navy); color: #fff; padding: 10px 18px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 20; }
+  header b { font-size: 18px; } header .role { background: var(--gold); color: var(--navy); border-radius: 8px; padding: 2px 8px; font-weight: 800; font-size: 12px; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+  nav button { background: transparent; color: #cbd5e1; border: 0; padding: 8px 12px; border-radius: 9px; font-size: 15px; font-weight: 700; }
+  nav button.on { background: #fff; color: var(--navy); }
+  main { padding: 16px; max-width: 1280px; margin: 0 auto; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .kpi span { font-size: 13px; color: var(--muted); } .kpi b { display: block; font-size: 30px; color: var(--navy); }
+  .kpi.warn { border: 2px solid var(--orange); background: #fff7ed; } .kpi.bad { border: 2px solid var(--red); background: #fef2f2; } .kpi.good { border: 2px solid var(--green); background: #f0fdf4; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  h3 { margin: 0 0 10px; color: var(--navy); }
+  .scroll { max-height: 420px; overflow: auto; }
+  .stale td { background: #fee2e2 !important; }
+  #reader2 { width: 100%; max-width: 420px; border-radius: 14px; overflow: hidden; background: #000; }
+  .bankBox .bal { font-size: 42px; font-weight: 900; color: var(--navy); }
+  .actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+  .actions .btn { padding: 16px; font-size: 17px; }
+  #login { max-width: 420px; margin: 80px auto; }
+  /* 인쇄 */
+  .sheet { background: #fff; }
+  .cardsGrid { display: grid; grid-template-columns: repeat(2, 90mm); gap: 6mm 8mm; justify-content: center; }
+  .pcard { width: 90mm; height: 56mm; border: 1px dashed #9ca3af; border-radius: 4mm; padding: 4mm 5mm; display: flex; gap: 4mm; break-inside: avoid; background: #fff; }
+  .pcard .qr { width: 38mm; height: 38mm; flex: none; } .pcard .qr svg { width: 100%; height: 100%; }
+  .pcard .camp { font-size: 9pt; font-weight: 800; color: #1a2942; letter-spacing: .5px; }
+  .pcard .ttl { font-size: 8pt; color: #d4a017; font-weight: 800; }
+  .pcard .nm { font-size: 17pt; font-weight: 900; margin-top: 2mm; }
+  .pcard .gr { font-size: 9pt; color: #374151; }
+  .pcard .no { font-size: 13pt; font-weight: 900; letter-spacing: 1px; margin-top: 2mm; font-family: monospace; }
+  .pcard .ft { font-size: 6.8pt; color: #6b7280; margin-top: 1.5mm; line-height: 1.35; }
+  .boothGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8mm; }
+  .bsign { border: 2px solid #1a2942; border-radius: 4mm; padding: 6mm; text-align: center; break-inside: avoid; }
+  .bsign .qr { width: 55mm; height: 55mm; margin: 3mm auto; } .bsign .qr svg { width: 100%; height: 100%; }
+  .bsign h2 { margin: 0; font-size: 20pt; } .bsign .k { font-family: monospace; font-size: 13pt; font-weight: 800; }
+  .printbar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    header, .noprint, .printbar { display: none !important; }
+    body { background: #fff; } main { padding: 0; max-width: none; }
+    .card { border: 0; padding: 0; }
+    .pcard { border: 1px solid #9ca3af; }
+  }
+</style>
+</head>
+<body>
+
+<div id="login" class="card">
+  <h2 style="margin-top:0">🔐 관리자 로그인</h2>
+  <p class="muted">구글 시트 메뉴 <b>경제캠프 → ② 관리자·부스 키 보기</b>에서 키를 확인하세요.<br>
+  관리자 키 = 모든 기능 · 은행 키 = 대시보드·은행 창구·세션 처리(은행 데스크·플로터용)</p>
+  <input id="akey" class="input" type="password" placeholder="관리자 키 또는 은행 키" style="text-transform:uppercase">
+  <button class="btn blue" style="width:100%;margin-top:10px" onclick="login()">로그인</button>
+  <p id="lmsg" class="minus"></p>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <b id="campName">경제마을 캠프</b><span class="role" id="roleTag"></span>
+  <nav id="nav"></nav>
+  <button class="btn sm ghost" style="color:#fff;border-color:#fff" onclick="logout()">로그아웃</button>
+</header>
+<main id="main"></main>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const E = Camp.esc;
+let AKEY = sessionStorage.getItem('akey') || '', ROLE = '', TAB = '', timer = null, bankCam = null, BANK_CODE = '';
+const TABS = [
+  ['dash', '📊 대시보드', 'BANK'], ['bank', '🏦 은행 창구', 'BANK'], ['students', '👥 학생', 'BANK'],
+  ['market', '📈 증권·경매', 'BANK'], ['awards', '🏆 수상', 'BANK'],
+  ['cards', '🪪 카드 발급', 'ADMIN'], ['booths', '🧭 부스 설정', 'ADMIN'], ['config', '⚙ 운영 설정', 'ADMIN'],
+];
+function toast(msg, cls) { const t = document.createElement('div'); t.className = 'toast ' + (cls || ''); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
+async function A(action, p) { return Camp.api(action, Object.assign({ adminKey: AKEY }, p || {})); }
+
+async function login(k) {
+  const key = (k || $('akey').value).trim().toUpperCase();
+  const r = await Camp.api('admin.login', { adminKey: key });
+  if (!r.ok) { $('lmsg').textContent = r.msg; sessionStorage.removeItem('akey'); $('login').classList.remove('hidden'); return; }
+  AKEY = key; ROLE = r.role; sessionStorage.setItem('akey', key);
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('campName').textContent = r.camp || '경제마을 캠프';
+  $('roleTag').textContent = ROLE === 'ADMIN' ? '총괄 관리자' : '은행·플로터';
+  $('nav').innerHTML = TABS.filter(t => ROLE === 'ADMIN' || t[2] === 'BANK').map(t => '<button data-t="' + t[0] + '" onclick="go(\'' + t[0] + '\')">' + t[1] + '</button>').join('');
+  go(location.hash.slice(1) || 'dash');
+}
+function logout() { sessionStorage.removeItem('akey'); location.reload(); }
+async function go(t) {
+  if (!TABS.find(x => x[0] === t && (ROLE === 'ADMIN' || x[2] === 'BANK'))) t = 'dash';
+  TAB = t; location.hash = t; clearInterval(timer);
+  if (bankCam) { await bankCam.stop(); bankCam = null; }
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  $('main').innerHTML = '<p class="muted">불러오는 중…</p>';
+  ({ dash, bank, students, market, awards, cards, booths, config })[t]();
+}
+
+/* ================= 대시보드 ================= */
+async function dash() {
+  const r = await A('admin.dashboard');
+  if (TAB !== 'dash') return;
+  if (!r.ok) { $('main').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  const k = r.kpi;
+  const avgCls = k.avg > k.bandHigh + 10 ? 'warn' : (k.avg < k.bandLow ? 'warn' : 'good');
+  $('main').innerHTML =
+    '<div class="row noprint" style="margin-bottom:10px"><span class="muted small">' + new Date(r.now).toLocaleTimeString() + ' 기준 · 15초마다 자동 새로고침</span><span class="grow"></span>' +
+    '<span class="tag">상점 가격 배율 ×' + k.priceMult + '</span> <span class="tag ' + (k.bankOpen ? 'g-노동' : 'g-리스크') + '">은행 ' + (k.bankOpen ? '운영 중' : '마감') + '</span></div>' +
+    '<div class="kpis">' +
+    kpi('입장 / 등록', k.entered + ' / ' + k.registered) +
+    kpi('평균 잔액 (목표 ' + k.bandLow + '~' + k.bandHigh + ')', k.avg, avgCls) +
+    kpi('파산(잔액 0)', k.bankrupt + '명 · ' + k.bankruptRate + '%', k.bankruptRate > 20 ? 'bad' : '') +
+    kpi('진행 중 세션', k.openSessions) +
+    kpi('미종료 ' + r.staleMin + '분+', k.stale, k.stale ? 'bad' : 'good') +
+    kpi('대출 중', k.loans + '명') + kpi('예금 총액', k.deposits) +
+    kpi('총 지급 / 총 지출', k.issued + ' / ' + k.spent) + '</div>' +
+    lever(k) +
+    '<div class="cols"><div class="card"><h3>⏳ 진행 중 세션 <span class="small muted">(오래된 순 · 빨강 = ' + r.staleMin + '분 이상 → 플로터 출동)</span></h3><div class="scroll">' +
+    (r.open.length ? '<table class="t"><tr><th>학생</th><th>부스</th><th>경과</th><th>처리</th></tr>' + r.open.map(o =>
+      '<tr class="' + (o.mins >= r.staleMin ? 'stale' : '') + '"><td>' + E(o.name) + ' <span class="small muted">' + o.sid + '</span></td><td>' + E(o.booth) + '</td><td>' + o.mins + '분</td>' +
+      '<td><button class="btn sm" onclick="fc(\'' + o.session + '\',false)">종료</button> ' + (o.fee ? '<button class="btn sm red" onclick="fc(\'' + o.session + '\',true)">취소·환불 ' + o.fee + '</button>' : '<button class="btn sm gray" onclick="fc(\'' + o.session + '\',true)">취소</button>') + '</td></tr>').join('') + '</table>' : '<p class="muted">없음</p>') +
+    '</div></div><div class="card"><h3>🚨 개입 알림</h3>' +
+    '<b class="small">오락실 소비 점검 대상</b>' + (r.alerts.arcade.length ? r.alerts.arcade.map(a => '<div>' + E(a.name) + ' — ' + a.n + '회 이용</div>').join('') : '<div class="muted small">없음</div>') +
+    '<br><b class="small">복권 디브리핑 대상 (3연패 또는 누적 손실)</b>' + (r.alerts.lottery.length ? r.alerts.lottery.map(a => '<div>' + E(a.name) + ' — 누적 ' + a.net + ' · 연패 ' + a.streak + '</div>').join('') : '<div class="muted small">없음</div>') +
+    '<br><h3>🏆 순자산 TOP 10</h3><table class="t"><tr><th>#</th><th>이름</th><th>순자산</th><th>잔액</th></tr>' + r.top.map((t, i) => '<tr><td>' + (i + 1) + '</td><td>' + E(t.name) + ' <span class="small muted">' + E(t.grade) + '</span></td><td><b>' + t.net + '</b></td><td>' + t.balance + '</td></tr>').join('') + '</table></div></div>' +
+    '<div class="card" style="margin-top:14px"><h3>🧭 부스별 현황</h3><table class="t"><tr><th>부스</th><th>분류</th><th>이용</th><th>진행 중</th><th>크레딧 흐름</th></tr>' +
+    r.booths.map(b => '<tr><td>' + b.id + '. ' + E(b.name) + (b.active ? '' : ' <span class="tag">중지</span>') + '</td><td><span class="tag g-' + E(b.group) + '">' + E(b.group) + '</span></td><td>' + b.uses + '</td><td>' + (b.open || '') + '</td><td class="' + (b.flow >= 0 ? 'plus' : 'minus') + '">' + Camp.fmt(b.flow) + '</td></tr>').join('') + '</table></div>';
+  timer = setTimeout(() => { if (TAB === 'dash') dash(); }, 15000);
+}
+function kpi(l, v, c) { return '<div class="kpi ' + (c || '') + '"><span>' + l + '</span><b>' + v + '</b></div>'; }
+function lever(k) {
+  let m = '';
+  if (k.entered < 5) return '';
+  if (k.avg > k.bandHigh + 10) m = '평균 잔액이 목표보다 높습니다 → <b>상점 가격 배율 1.1</b>(10% 인상) 권장';
+  else if (k.avg < k.bandLow) m = '평균 잔액이 낮습니다 → 일자리 홍보 방송 또는 <b>가격 배율 1.0</b> 복귀 권장';
+  if (k.bankruptRate > 20) m += (m ? '<br>' : '') + '파산 비율 20% 초과 → 은행 대출 안내 방송 권장';
+  if (!m || ROLE !== 'ADMIN') return m ? '<div class="card" style="margin-top:10px;background:#fff7ed;border-color:#fdba74">💡 ' + m + '</div>' : '';
+  return '<div class="card" style="margin-top:10px;background:#fff7ed;border-color:#fdba74">💡 ' + m +
+    ' <button class="btn sm gold" onclick="setCfg(\'PRICE_MULT\',1.1)">배율 1.1 적용</button> <button class="btn sm" onclick="setCfg(\'PRICE_MULT\',1)">배율 1.0</button></div>';
+}
+async function fc(s, refund) {
+  if (!confirm(refund ? '이 세션을 취소하고 선차감을 환불할까요?' : '결과 없이 세션을 종료할까요?')) return;
+  const r = await A('admin.forceClose', { session: s, refund: refund }); toast(r.msg, r.ok ? 'ok' : 'err'); dash();
+}
+
+/* ================= 은행 창구 ================= */
+async function bank() {
+  $('main').innerHTML = '<div class="cols"><div class="card"><h3>🏦 은행 창구 — 학생 카드 스캔</h3><div id="reader2"></div>' +
+    '<div class="row" style="margin-top:8px"><input id="bcode" class="input grow" placeholder="카드 번호 직접 입력" style="text-transform:uppercase"><button class="btn" onclick="bankLook($(\'bcode\').value)">조회</button></div>' +
+    '<p class="small muted">예금(최소 20) → 은행 마감 때 이자 10% · 대출 50(1인 1회) → 상환 55 · 미상환 대출은 순자산에서 차감</p></div>' +
+    '<div class="card bankBox" id="bankBox"><p class="muted">카드를 스캔하세요</p></div></div>';
+  $('bcode').addEventListener('keydown', e => { if (e.key === 'Enter') bankLook($('bcode').value); });
+  bankCam = Camp.scanner('reader2', (t) => bankLook(t), { onError: (m) => { $('reader2').innerHTML = '<p style="color:#fff;padding:20px">' + E(m) + '</p>'; } });
+  bankCam.start();
+}
+async function bankLook(code) {
+  code = String(code || '').trim(); if (!code) return;
+  const r = await A('bank.lookup', { code: code });
+  if (!r.ok) { Camp.beep(false); $('bankBox').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  Camp.beep(true); BANK_CODE = code; renderBank(r);
+}
+function renderBank(r) {
+  const s = r.summary;
+  $('bankBox').innerHTML = '<h3>' + E(r.student.name) + ' <span class="small muted">' + E(r.student.grade) + ' · ' + r.student.sid + '</span></h3>' +
+    (r.student.entered ? '' : '<p class="minus">아직 입장 등록 전입니다</p>') + (r.bankOpen === false ? '<p class="minus">은행이 마감되었습니다</p>' : '') +
+    '<div class="muted small">잔액</div><div class="bal">' + s.balance + '</div>' +
+    '<div class="row small"><span>예금 <b>' + s.deposit + '</b></span><span>대출 <b class="minus">' + s.loan + '</b></span><span>주식 <b>' + s.stockValue + '</b></span><span>순자산 <b>' + s.net + '</b></span></div>' +
+    '<div class="row" style="margin-top:12px"><input id="amt" class="input grow" type="number" inputmode="numeric" placeholder="금액 (예금·인출)"></div>' +
+    '<div class="actions"><button class="btn blue" onclick="bankDo(\'bank.deposit\')">예금 넣기</button><button class="btn ghost" onclick="bankDo(\'bank.withdraw\')">예금 인출(이자 없음)</button>' +
+    '<button class="btn gold" onclick="bankDo(\'bank.loan\')">대출 ' + r.loanAmount + ' 실행</button><button class="btn green" onclick="bankDo(\'bank.repay\')">대출 상환 ' + (s.loan || r.loanRepay) + '</button></div>';
+}
+async function bankDo(action) {
+  const amt = $('amt') ? $('amt').value : '';
+  if (action === 'bank.loan' && !confirm('대출을 실행할까요? 나중에 원금+10%를 갚아야 합니다')) return;
+  const r = await A(action, { code: BANK_CODE, amount: amt });
+  Camp.beep(r.ok); toast(r.msg, r.ok ? 'ok' : 'err');
+  if (r.ok) bankLook(BANK_CODE);
+}
+
+/* ================= 학생 ================= */
+async function students() {
+  const r = await A('admin.students');
+  if (!r.ok) { $('main').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  const reg = ROLE === 'ADMIN' ? '<div class="card" style="margin-bottom:14px"><h3>➕ 학생 일괄 등록</h3><p class="small muted">엑셀/명렬표에서 <b>이름, 학년, 반</b> 순서로 복사해 붙여넣으세요(한 줄에 한 명, 탭 또는 쉼표 구분). 등록하면 카드 번호가 자동 발급됩니다.</p>' +
+    '<textarea id="regText" class="input" rows="5" placeholder="김하늘\t초6\t1\n이바다\t중1\t2"></textarea><button class="btn blue" style="margin-top:8px" onclick="register()">등록</button></div>' : '';
+  $('main').innerHTML = reg + '<div class="card"><div class="row"><h3 class="grow">👥 학생 ' + r.students.length + '명</h3><input id="q" class="input" style="max-width:260px" placeholder="이름·번호 검색" oninput="filterStu()"></div>' +
+    '<div class="scroll" style="max-height:560px"><table class="t" id="stuT"><tr><th>번호</th><th>이름</th><th>학년·반</th><th>입장</th><th>잔액</th><th>예금</th><th>대출</th><th>순자산</th><th></th></tr>' +
+    r.students.map(s => '<tr data-k="' + E(s.name + ' ' + s.sid) + '"><td class="small">' + s.sid + '</td><td><b>' + E(s.name) + '</b></td><td>' + E(s.grade) + ' ' + E(s.cls) + '</td><td>' + (s.entered ? '✅' : '') + '</td><td>' + s.balance + '</td><td>' + s.deposit + '</td><td class="minus">' + (s.loan || '') + '</td><td><b>' + s.net + '</b></td>' +
+      '<td><button class="btn sm" onclick="stu(\'' + s.sid + '\')">상세</button></td></tr>').join('') + '</table></div></div><div id="stuDetail"></div>';
+}
+function filterStu() { const q = $('q').value.trim(); document.querySelectorAll('#stuT tr[data-k]').forEach(tr => { tr.style.display = !q || tr.dataset.k.indexOf(q) >= 0 ? '' : 'none'; }); }
+async function register() {
+  const rows = $('regText').value.split(/\n/).map(l => l.split(/\t|,/).map(x => x.trim())).filter(a => a[0]).map(a => ({ name: a[0], grade: a[1] || '', cls: a[2] || '' }));
+  if (!rows.length) return toast('등록할 학생이 없습니다', 'err');
+  if (!confirm(rows.length + '명을 등록할까요?')) return;
+  const r = await A('admin.register', { rows: rows }); toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) students();
+}
+async function stu(sid) {
+  const r = await A('admin.student', { sid: sid });
+  if (!r.ok) return toast(r.msg, 'err');
+  const s = r.student, m = r.summary;
+  $('stuDetail').innerHTML = '<div class="card" style="margin-top:14px"><div class="row"><h3 class="grow">' + E(s.name) + ' <span class="small muted">' + E(s.grade) + ' ' + E(s.cls) + ' · ' + s.sid + (ROLE === 'ADMIN' ? '-' + s.token : '') + '</span></h3>' +
+    (ROLE === 'ADMIN' ? '<button class="btn sm gold" onclick="reissue(\'' + s.sid + '\')">카드 재발급</button>' : '') + '</div>' +
+    '<p>잔액 <b>' + m.balance + '</b> · 예금 ' + m.deposit + ' · 주식 ' + m.stockValue + ' · 대출 ' + m.loan + ' · <b>순자산 ' + m.net + '</b></p>' +
+    (ROLE === 'ADMIN' ? '<div class="row"><input id="adj" class="input" type="number" style="max-width:140px" placeholder="±금액"><input id="adjNote" class="input grow" placeholder="조정 사유(필수 — 원장에 기록)"><button class="btn" onclick="adjust(\'' + s.sid + '\')">잔액 조정</button></div>' : '') +
+    '<div class="scroll" style="margin-top:10px"><table class="t"><tr><th>시각</th><th>부스</th><th>구분</th><th>내용</th><th>금액</th><th>처리</th></tr>' +
+    r.tx.map(t => '<tr><td>' + Camp.hhmm(t.ts) + '</td><td>' + E(t.booth) + '</td><td>' + E(t.type) + '</td><td>' + E(t.note) + '</td><td class="' + (t.delta > 0 ? 'plus' : 'minus') + '">' + (t.delta ? Camp.fmt(t.delta) : '0') + '</td><td class="small muted">' + E(t.by) + '</td></tr>').join('') + '</table></div></div>';
+  $('stuDetail').scrollIntoView({ behavior: 'smooth' });
+}
+async function reissue(sid) {
+  if (!confirm('카드를 재발급하면 이전 카드는 즉시 사용할 수 없게 됩니다. 계속할까요?')) return;
+  const r = await A('admin.reissue', { sid: sid }); toast(r.msg, r.ok ? 'ok' : 'err');
+  if (r.ok) { stu(sid); printCards([sid]); }
+}
+async function adjust(sid) {
+  const r = await A('admin.adjust', { sid: sid, delta: $('adj').value, note: $('adjNote').value }); toast(r.msg, r.ok ? 'ok' : 'err'); if (r.ok) stu(sid);
+}
+
+/* ================= 카드 발급(인쇄) ================= */
+let CARD_DATA = null;
+async function cards() {
+  const r = await A('admin.cards');
+  if (!r.ok) { $('main').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  CARD_DATA = r;
+  const classes = Array.from(new Set(r.students.map(s => (s.grade || '') + ' ' + (s.cls || '')))).sort();
+  $('main').innerHTML = '<div class="printbar card"><b>🪪 학생 QR 카드</b><span class="muted small">명함 크기(90×56mm) · A4 한 장에 8장 · 카드 QR = 내 통장 주소(휴대폰 카메라로 찍으면 통장이 열림)</span>' +
+    '<select id="cls" class="input" style="max-width:200px" onchange="drawCards()"><option value="">전체 (' + r.students.length + '명)</option>' + classes.map(c => '<option>' + E(c) + '</option>').join('') + '</select>' +
+    '<button class="btn blue" onclick="window.print()">인쇄</button></div><div id="cardsOut" class="sheet"></div>';
+  drawCards();
+}
+function cardHtml(s, camp) {
+  return '<div class="pcard"><div class="qr">' + Camp.qrSvg(Camp.cardUrl(s.sid, s.token)) + '</div><div><div class="camp">' + E(camp || '경제마을 캠프') + '</div><div class="ttl">경제마을 통장 카드</div>' +
+    '<div class="nm">' + E(s.name) + '</div><div class="gr">' + E(s.grade || '') + ' ' + (s.cls ? E(s.cls) + '반' : '') + '</div>' +
+    '<div class="no">' + s.sid + '-' + s.token + '</div><div class="ft">부스에서: 시작 스캔 → 체험 → 다시 스캔<br>휴대폰 카메라로 찍으면 내 통장 확인<br>분실 시 은행에서 재발급</div></div></div>';
+}
+function drawCards() {
+  const c = $('cls').value;
+  const list = CARD_DATA.students.filter(s => !c || ((s.grade || '') + ' ' + (s.cls || '')) === c);
+  $('cardsOut').innerHTML = '<div class="cardsGrid">' + list.map(s => cardHtml(s, CARD_DATA.camp)).join('') + '</div>';
+}
+async function printCards(sids) {
+  const r = await A('admin.cards'); if (!r.ok) return;
+  const w = window.open('', '_blank');
+  w.document.write('<html><head><meta charset="utf-8"><title>카드 재발급</title><link rel="stylesheet" href="' + Camp.BASE + 'common.css"><style>' + document.querySelector('style').textContent + '</style></head><body><div class="cardsGrid">' +
+    r.students.filter(s => sids.indexOf(s.sid) >= 0).map(s => cardHtml(s, r.camp)).join('') + '</div><script>setTimeout(()=>print(),500)<\/script></body></html>');
+  w.document.close();
+}
+
+/* ================= 부스 설정 QR ================= */
+async function booths() {
+  const r = await A('admin.booths');
+  if (!r.ok) { $('main').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  $('main').innerHTML = '<div class="printbar card"><b>🧭 부스 고유코드 · 설정 QR</b><span class="muted small">각 부스 태블릿의 카메라 앱으로 이 QR을 찍으면 그 부스 단말로 자동 설정됩니다. 고유코드는 외부에 공개하지 마세요(부스 운영 후 회수).</span><button class="btn blue" onclick="window.print()">인쇄</button></div>' +
+    '<div class="card noprint" style="margin-bottom:12px"><table class="t"><tr><th>번호</th><th>부스</th><th>방식</th><th>선차감</th><th>이용 한도</th><th>획득 한도</th><th>쿨다운</th><th>결과 버튼(라벨:증감)</th><th>PIN</th><th>코드</th></tr>' +
+    r.booths.map(b => '<tr><td>' + b.id + '</td><td><b>' + E(b.name) + '</b> <span class="tag g-' + E(b.group) + '">' + E(b.group) + '</span></td><td>' + b.mode + '</td><td>' + (b.fee || '') + '</td><td>' + (b.maxStart || '') + '</td><td>' + (b.maxSuccess || '') + '</td><td>' + (b.cooldown || '') + '</td><td class="small">' + E(String(b.options || '').replace(/\|/g, ' / ')) + '</td><td>' + E(b.pin) + '</td><td><code>' + E(b.key) + '</code></td></tr>').join('') +
+    '</table><p class="small muted">규칙 변경은 구글 시트의 <b>Booths</b> 시트에서 직접 수정하면 즉시 반영됩니다(코드 수정·재배포 불필요). 상품·가격은 <b>Products</b>, 퀴즈는 <b>Quiz</b>, 미션은 <b>Missions</b> 시트.</p></div>' +
+    '<div class="boothGrid">' + r.booths.map(b => '<div class="bsign"><div class="small">경제마을 캠프 · 부스 단말 설정용 (요원 전용)</div><h2>' + (b.id === 99 ? '조회' : b.id + '번') + ' ' + E(b.name) + '</h2>' +
+      '<div class="qr">' + Camp.qrSvg(Camp.boothUrl(b.id, b.key)) + '</div><div>부스 고유코드 <span class="k">' + E(b.key) + '</span>' + (b.pin ? ' · 요원 PIN <span class="k">' + E(b.pin) + '</span>' : '') + '</div>' +
+      '<div class="small" style="margin-top:2mm">' + E(b.guide || '') + '</div></div>').join('') + '</div>';
+}
+
+/* ================= 증권·경매 ================= */
+async function market() {
+  const r = await A('admin.stocks');
+  if (!r.ok) { $('main').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  const admin = ROLE === 'ADMIN';
+  $('main').innerHTML = '<div class="cols"><div class="card"><h3>📈 주가 발표 (총괄 방송과 동시에 입력)</h3><table class="t"><tr><th>종목</th><th>현재가</th><th>보유자</th><th>평가 총액</th>' + (admin ? '<th>새 주가</th>' : '') + '</tr>' +
+    r.stocks.map(s => '<tr><td><b>' + E(s.name) + '</b><br><span class="small muted">' + E(s.desc) + '</span></td><td style="font-size:22px;font-weight:900">' + s.price + '</td><td>' + s.holders + '</td><td>' + s.value + '</td>' +
+      (admin ? '<td><div class="row"><input id="np_' + s.code + '" class="input" type="number" style="width:90px"><button class="btn sm" onclick="setPrice(\'' + s.code + '\')">발표</button></div><div class="small">' +
+        [0.3, 0.5, 1, 1.5, 2].map(x => '<a href="#" onclick="$(\'np_' + s.code + '\').value=' + Math.round(s.price * x * 10) / 10 + ';return false">×' + x + '</a>').join(' · ') + '</div></td>' : '') + '</tr>').join('') + '</table>' +
+    (admin ? '<p class="small muted">기본 주가 10 기준 · 미리 봉투에 정한 배율(×1.5 / ×1.0 / ×0.5 / ×2.0 / ×0.3)을 발표 시점에 입력. 종료 전에 아래 버튼으로 보유 주식을 현재가로 일괄 정산하세요.</p><button class="btn red" onclick="settle()">보유 주식 전부 현재가로 정산(종료 시 1회)</button>' : '') + '</div>' +
+    '<div class="card"><h3>🔨 경매 낙찰 결제</h3>' + (admin ? '<p class="small muted">낙찰자의 카드를 스캔하거나 번호를 입력 → 물품명·낙찰가 입력 → 결제</p><div id="reader2"></div>' +
+      '<input id="acode" class="input" placeholder="낙찰자 카드 번호" style="margin-top:8px;text-transform:uppercase"><input id="aitem" class="input" placeholder="물품명" style="margin-top:8px"><input id="aamt" class="input" type="number" placeholder="낙찰가" style="margin-top:8px">' +
+      '<button class="btn gold" style="width:100%;margin-top:8px" onclick="auction()">낙찰 결제</button><p id="amsg"></p>' : '<p class="muted">총괄 관리자만 처리합니다</p>') + '</div></div>';
+  if (admin) {
+    bankCam = Camp.scanner('reader2', (t) => { $('acode').value = t; Camp.beep(true); }, { onError: (m) => { $('reader2').innerHTML = '<p class="small muted">' + E(m) + '</p>'; } });
+    bankCam.start();
+  }
+}
+async function setPrice(code) { const v = $('np_' + code).value; if (!v) return; const r = await A('stock.setPrice', { code: code, price: v }); toast(r.msg, r.ok ? 'ok' : 'err'); market(); }
+async function settle() { if (!confirm('모든 보유 주식을 현재가로 매도 정산합니다. 마감 직전에 1회만 하세요. 계속할까요?')) return; const r = await A('stock.settleAll'); toast(r.msg, r.ok ? 'ok' : 'err'); market(); }
+async function auction() {
+  const r = await A('auction.charge', { code: $('acode').value, item: $('aitem').value, amount: $('aamt').value });
+  Camp.beep(r.ok); $('amsg').innerHTML = '<b class="' + (r.ok ? 'plus' : 'minus') + '">' + E(r.msg) + '</b>';
+  if (r.ok) { $('acode').value = ''; $('aamt').value = ''; }
+}
+
+/* ================= 수상 ================= */
+async function awards() {
+  const r = await A('admin.awards');
+  if (!r.ok) { $('main').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  const box = (t, d, list, f) => '<div class="card"><h3>' + t + '</h3><p class="small muted">' + d + '</p><table class="t"><tr><th>#</th><th>이름</th><th>학년·반</th><th>기준값</th></tr>' +
+    (list.length ? list.map((x, i) => '<tr><td>' + (i + 1) + '</td><td><b>' + E(x.name) + '</b></td><td>' + E(x.grade) + ' ' + E(x.cls) + '</td><td>' + f(x) + '</td></tr>').join('') : '<tr><td colspan="4" class="muted">해당 없음</td></tr>') + '</table></div>';
+  $('main').innerHTML = '<div class="printbar card"><b>🏆 수상 후보</b><span class="small muted">결산 시점 기준 — 은행 마감·주식 정산 후 확인하세요. 기본 3부문: 재테크왕·근면상·장사상</span><button class="btn" onclick="awards()">새로고침</button><button class="btn blue" onclick="window.print()">인쇄</button></div>' +
+    '<div class="cols">' + box('💰 재테크왕', '최종 순자산 TOP', r.wealth, x => '순자산 ' + x.net) + box('💪 근면상', '노동 부스 획득 누적 TOP', r.work, x => '+' + x.work) +
+    box('🛠 장사상', '만들어팔기 공방 순이익 TOP', r.craft, x => Camp.fmt(x.craft)) + box('🦁 용기상 (4시간 확장)', '대출을 받고 끝까지 상환한 학생', r.courage, x => '대출→상환') + '</div>';
+}
+
+/* ================= 운영 설정 ================= */
+async function config() {
+  const r = await A('admin.config');
+  if (!r.ok) { $('main').innerHTML = '<p class="minus">' + E(r.msg) + '</p>'; return; }
+  $('main').innerHTML = '<div class="cols"><div class="card"><h3>⚡ 당일 조정 레버</h3>' +
+    '<p>상점 가격 배율 (슈퍼·카페·굿즈 전체 가격에 곱함)</p><div class="row">' + [0.9, 1, 1.1, 1.2].map(x => '<button class="btn ' + (x === 1 ? 'blue' : 'ghost') + '" onclick="setCfg(\'PRICE_MULT\',' + x + ')">×' + x + '</button>').join('') + '</div>' +
+    '<hr><p><b>은행 마감</b> — 모든 예금에 이자를 붙여 잔액으로 돌려주고 은행을 닫습니다 (경매 직전 01:40)</p><button class="btn red" onclick="closeBank()">은행 마감 실행</button>' +
+    '<hr><p class="small muted">그 밖의 값(부스 규칙·상품·퀴즈)은 구글 시트에서 직접 수정합니다. 관리자·은행 키는 시트 Config에서만 보입니다.</p></div>' +
+    '<div class="card"><h3>설정값</h3><table class="t"><tr><th>항목</th><th>값</th><th>설명</th><th></th></tr>' + r.config.map(c =>
+      '<tr><td><code>' + E(c.key) + '</code></td><td><input id="cf_' + E(c.key) + '" class="input" style="padding:6px;font-size:14px;width:110px" value="' + E(c.value) + '"></td><td class="small">' + E(c.note) + '</td><td><button class="btn sm" onclick="setCfg(\'' + E(c.key) + '\', $(\'cf_' + E(c.key) + '\').value)">저장</button></td></tr>').join('') + '</table></div></div>';
+}
+async function setCfg(k, v) { const r = await A('admin.setConfig', { key: k, value: v }); toast(r.msg, r.ok ? 'ok' : 'err'); if (TAB === 'config') config(); if (TAB === 'dash') dash(); }
+async function closeBank() { if (!confirm('은행을 마감하고 모든 예금 이자를 지급합니다. 계속할까요?')) return; const r = await A('bank.close'); toast(r.msg, r.ok ? 'ok' : 'err'); }
+
+$('akey').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+if (AKEY) login(AKEY); 
+</script>
+</body>
+</html>
